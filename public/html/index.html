@@ -16,7 +16,6 @@
     <script id="vertexShader" type="x-shader/x-vertex">
       varying vec3 vViewPosition;
       varying vec3 vNormal;
-      varying vec2 vUv;
       attribute vec2 uv2;
       attribute vec3 texPos;
       attribute vec3 texNorm;
@@ -32,7 +31,6 @@
         texturePos.xyz += bbox_min;
 
         vec3 p = position + texturePos.xzy;  //swizzle y and z because textures are exported with z-up
-        vUv = uv2; //set the varying uv coordinate to the uv used for the position/ normal texture
         textureNorm *= 2.0;
         textureNorm -= 1.0;
         vNormal = normalMatrix * textureNorm.xzy;
@@ -99,7 +97,7 @@
       var count;
       var startTime;
       var timeDelta = 0;
-      var fps = 20.0 //fps
+      var fps = 10.0 //fps
       var numOfFrames = 128
       var totalDuration = numOfFrames * (1 / fps) * 1000 ;
       var timeInFrames = 0.001;
@@ -111,7 +109,7 @@
         scene = new THREE.Scene();
         //INIT CAMERA
         camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000000 );
-        let controls = new THREE.OrbitControls(camera);
+        controls = new THREE.OrbitControls(camera);
 
         //controls = new THREE.OrbitControls(camera);
         camera.position.set(0.0, -211.46220431794083, 321.89248277879454);
@@ -142,7 +140,7 @@
           lights: true,
           side: THREE.DoubleSide,
           transparent: true,
-          derivatives: true //so that we can calculate the actual normal at each vertex in the fragment shader
+          //derivatives: true //so that we can calculate the actual normal at each vertex in the fragment shader
         });
 
         /*************** FBX GEOMETRY AND EXR TEXTURE LOADING ***************/
@@ -185,6 +183,8 @@
                   squidMesh.geometry.addAttribute( 'texNorm', new THREE.BufferAttribute( texNorm, 3 ) );
                   //start the animation now
                   startTime = Date.now();
+                  animate(); //lets gooooo
+
                 });
               });
             }
@@ -224,14 +224,14 @@
 
       function animate() {
   			requestAnimationFrame( animate );
+        controls.update();
   			render();
         stats.update();
-        //controls.update();
   		}
 
   		function render() {
         //change direction of animation when ready
-        if (timeInFrames === 1.0) {
+        if (timeInFrames === 0.99) {
           startTime = Date.now() + 0.01;
           forward = false;
         }
@@ -242,10 +242,11 @@
         //update the timeInFrames
         timeDelta = Date.now() - startTime;
         if (forward) {
-          timeInFrames = Math.min(timeDelta / totalDuration, 1.0);
+          timeInFrames = Math.min(timeDelta / totalDuration, 0.99);
         } else {
-          timeInFrames = 1.0 - Math.min(timeDelta / totalDuration, 1.0);
+          timeInFrames = 0.99 - Math.min(timeDelta / totalDuration, 0.99);
         }
+        console.log(timeInFrames)
         //update the position and normal displacement attributes for the current timeInFrames (or row of EXR)
         var posValues = squidMesh.geometry.attributes.texPos.array;
         var normValues = squidMesh.geometry.attributes.texNorm.array;
@@ -268,7 +269,6 @@
   		}
 
       init ();
-      animate(); //lets gooooo
 
     </script>
   </body>
