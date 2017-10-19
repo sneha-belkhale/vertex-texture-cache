@@ -9,10 +9,24 @@
     <style>
       body { margin: 0; }
       canvas { width: 100%; height: 100% }
+      #description {
+        position: absolute;
+        width: 300px;
+        height: 100px;
+        bottom: 30px;
+        left: 30px;
+        padding: 20px;
+        opacity: 0.8;
+        background-color: white;
+      }
     </style>
   </head>
 
   <body>
+    <div id="description">
+      This is demonstration of Houdini finite element analysis (FEM) simulation played in Three JS.
+      This made possible with <a href="https://vimeo.com/207832662" target="_blank">Houdini Vertex Cache</a> and <a href="https://github.com/syoyo/tinyexr/" target="_blank">tinyexr</a> projects.
+    </div>
     <script id="vertexShader" type="x-shader/x-vertex">
       varying vec3 vViewPosition;
       varying vec3 vNormal;
