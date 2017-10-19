@@ -125,8 +125,9 @@
         camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000000 );
         controls = new THREE.OrbitControls(camera);
 
-        //controls = new THREE.OrbitControls(camera);
-        camera.position.set(0.0, -211.46220431794083, 321.89248277879454);
+        camera.position.set(0, -211.46220431794083, 321.89248277879454);
+        controls.target.set(0, -211, 0);
+        controls.update()
         //INIT RENDERER
         renderer = new THREE.WebGLRenderer();
         renderer.setSize( window.innerWidth, window.innerHeight );
@@ -260,7 +261,6 @@
         } else {
           timeInFrames = 0.99 - Math.min(timeDelta / totalDuration, 0.99);
         }
-        console.log(timeInFrames)
         //update the position and normal displacement attributes for the current timeInFrames (or row of EXR)
         var posValues = squidMesh.geometry.attributes.texPos.array;
         var normValues = squidMesh.geometry.attributes.texNorm.array;
