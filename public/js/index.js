@@ -35,7 +35,7 @@ function parseExr(arrayBuffer) {
     height: height
   };
 }
-//output the progress of texture / object loaders
+// Squid model progress
 function onProgress (xhr) {
   if ( xhr.lengthComputable ) {
     var percentComplete = xhr.loaded / xhr.total * 100;
@@ -103,51 +103,49 @@ function init () {
   /*************** FBX GEOMETRY AND EXR TEXTURE LOADING ***************/
   let manager = new THREE.LoadingManager();
   let FBXLoader = new THREE.FBXLoader( manager );
+  
   FBXLoader.load( 'assets/squid_mesh.fbx', function ( object ) {
     object.traverse((child) => {
       if ( child instanceof THREE.Mesh ) {
         squidMesh = new THREE.Mesh(child.geometry, material);
-        //fetch the first position texture exr
-        fetch("assets/squid_pos.exr").then(function (response) {
-          return response.arrayBuffer();
-        }).then(function (arrayBuffer) {
-
-          exrPos = parseExr(arrayBuffer);
-          //fetch the second normal texture exr
-          fetch("assets/squid_norm.exr").then(function (response) {
-            return response.arrayBuffer();
-          }).then(function (arrayBuffer) {
-
-            exrNorm = parseExr(arrayBuffer);
-            //populate the first set of position and normal displacements
-            count = squidMesh.geometry.attributes.position.count;
-            var texPos = new Float32Array ( count * 3 )
-            var texNorm = new Float32Array ( count * 3 )
-            //iterate through the uv's to find the corresponding value in the exr
-            for (var i=0; i<count; i++){
-              var u = Math.floor(squidMesh.geometry.attributes.uv2.array[2*i] * exrPos.width);
-              var v = Math.floor(squidMesh.geometry.attributes.uv2.array[2*i+1] * exrPos.height);
-              var t = 4*(v*exrPos.width + u);
-              texPos[3*i] = exrPos.data[t];
-              texPos[3*i+1] = exrPos.data[t+1];
-              texPos[3*i+2] = exrPos.data[t+2];
-              texNorm[3*i] = exrNorm.data[t];
-              texNorm[3*i+1] = exrNorm.data[t+1];
-              texNorm[3*i+2] = exrNorm.data[t+2];
-            }
-            //add the position and normal displacements as a shader attribute
-            squidMesh.geometry.addAttribute( 'texPos', new THREE.BufferAttribute( texPos, 3 ) );
-            squidMesh.geometry.addAttribute( 'texNorm', new THREE.BufferAttribute( texNorm, 3 ) );
-            //start the animation now
-            startTime = Date.now();
-            animate(); //lets gooooo
-
-          });
-        });
       }
     });
     scene.add(squidMesh);
   }, onProgress, onError );
+
+  //fetch the first position texture exr
+  fetch("assets/squid_pos.exr").then(function (response) {
+    return response.arrayBuffer();
+  }).then(function (arrayBuffer) {
+    exrPos = parseExr(arrayBuffer);    
+    return fetch("assets/squid_norm.exr");
+  }).then(function (response) {
+    return response.arrayBuffer();
+  }).then(function (arrayBuffer) {
+    exrNorm = parseExr(arrayBuffer);
+    //populate the first set of position and normal displacements
+    count = squidMesh.geometry.attributes.position.count;
+    var texPos = new Float32Array ( count * 3 )
+    var texNorm = new Float32Array ( count * 3 )
+    //iterate through the uv's to find the corresponding value in the exr
+    for (var i=0; i<count; i++){
+      var u = Math.floor(squidMesh.geometry.attributes.uv2.array[2*i] * exrPos.width);
+      var v = Math.floor(squidMesh.geometry.attributes.uv2.array[2*i+1] * exrPos.height);
+      var t = 4*(v*exrPos.width + u);
+      texPos[3*i] = exrPos.data[t];
+      texPos[3*i+1] = exrPos.data[t+1];
+      texPos[3*i+2] = exrPos.data[t+2];
+      texNorm[3*i] = exrNorm.data[t];
+      texNorm[3*i+1] = exrNorm.data[t+1];
+      texNorm[3*i+2] = exrNorm.data[t+2];
+    }
+    //add the position and normal displacements as a shader attribute
+    squidMesh.geometry.addAttribute( 'texPos', new THREE.BufferAttribute( texPos, 3 ) );
+    squidMesh.geometry.addAttribute( 'texNorm', new THREE.BufferAttribute( texNorm, 3 ) );
+    //start the animation now
+    startTime = Date.now();
+    animate(); // lets gooooo
+  });
 
   /*************** SET UP THE LIGHTS FOR THE SCENE ***************/
   // var light1 = new THREE.PointLight( 0x7bf9f5, 0.3 );
