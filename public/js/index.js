@@ -113,17 +113,14 @@ function init () {
     scene.add(squidMesh);
   }, onProgress, onError );
 
-  //fetch the first position texture exr
-  fetch("assets/squid_pos.exr").then(function (response) {
-    return response.arrayBuffer();
-  }).then(function (arrayBuffer) {
-    exrPos = parseExr(arrayBuffer);    
-    return fetch("assets/squid_norm.exr");
-  }).then(function (response) {
-    return response.arrayBuffer();
-  }).then(function (arrayBuffer) {
-    exrNorm = parseExr(arrayBuffer);
-    //populate the first set of position and normal displacements
+  // Fetch our position and normal map exr's simultaneously
+  Promise.all([fetch("assets/squid_pos.exr"), fetch("assets/squid_norm.exr")]).then(res => { 
+    return Promise.all([res[0].arrayBuffer(), res[1].arrayBuffer()]);
+  }).then(buffers => {
+    exrPos = parseExr(buffers[0]);
+    exrNorm = parseExr(buffers[1]);
+    
+    // Populate the first set of position and normal displacements
     count = squidMesh.geometry.attributes.position.count;
     var texPos = new Float32Array ( count * 3 )
     var texNorm = new Float32Array ( count * 3 )
@@ -139,12 +136,13 @@ function init () {
       texNorm[3*i+1] = exrNorm.data[t+1];
       texNorm[3*i+2] = exrNorm.data[t+2];
     }
-    //add the position and normal displacements as a shader attribute
+    // Add the position and normal displacements as a shader attribute
     squidMesh.geometry.addAttribute( 'texPos', new THREE.BufferAttribute( texPos, 3 ) );
     squidMesh.geometry.addAttribute( 'texNorm', new THREE.BufferAttribute( texNorm, 3 ) );
-    //start the animation now
+    
+    // Start the animation now
     startTime = Date.now();
-    animate(); // lets gooooo
+    animate();  // Lets gooooo!
   });
 
   /*************** SET UP THE LIGHTS FOR THE SCENE ***************/
