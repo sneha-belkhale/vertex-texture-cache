@@ -1,55 +1,8 @@
-function parseExr(arrayBuffer) {
-  let data = new Uint8Array(arrayBuffer);
-
-  ParseEXRHeaderFromMemory = cwrap(
-    'ParseEXRHeaderFromMemory', 'number', ['number', 'number', 'number']
-  );
-
-  LoadEXRFromMemory = cwrap(
-    'LoadEXRFromMemory', 'number', ['number', 'number', 'string']
-  );
-
-  let widthPtr = _malloc(4);
-  let widthHeap = new Uint8Array(HEAPU8.buffer, widthPtr, 4);
-  let heightPtr = _malloc(4);
-  let heightHeap = new Uint8Array(HEAPU8.buffer, heightPtr, 4);
-  let ptr = _malloc(data.length);
-  let dataHeap = new Uint8Array(HEAPU8.buffer, ptr, data.length);
-  dataHeap.set(new Uint8Array(data.buffer));
-
-  let ret  = ParseEXRHeaderFromMemory(widthHeap.byteOffset, heightHeap.byteOffset, dataHeap.byteOffset);
-
-  let width = (new Int32Array(widthHeap.buffer, widthHeap.byteOffset, 1))[0];
-  let height = (new Int32Array(heightHeap.buffer, heightHeap.byteOffset, 1))[0];
-
-  let imgDataLen = width * height * 4 * 4;
-  let img = _malloc(imgDataLen);
-  let imgHeap = new Float32Array(HEAPU8.buffer, img, imgDataLen/4);
-
-  ret = LoadEXRFromMemory(imgHeap.byteOffset, dataHeap.byteOffset, null);
-
-  // Now imgHeap contains HDR image: float x RGBA x width x height
-  return {
-    data: imgHeap,  // Float32Array
-    width: width,
-    height: height
-  };
-}
-// Squid model progress
-function onProgress (xhr) {
-  if ( xhr.lengthComputable ) {
-    var percentComplete = xhr.loaded / xhr.total * 100;
-    console.log( Math.round(percentComplete, 2) + '% downloaded' );
-  }
-};
-
-let onError = (err) => {
-  console.log(err);
-};
-
 var scene, camera, renderer, controls;
 var squidMesh;
 var exrPos, exrNorm;
+var exrPosBytes, exrNormBytes;
+var texWidth, texHeight;
 var count;
 var startTime;
 var timeDelta = 0;
@@ -59,18 +12,29 @@ var totalDuration = numOfFrames * (1 / fps) * 1000 ;
 var timeInFrames = 0.001;
 var forward = false;
 
+// Squid model progress
+function onProgress (xhr) {
+  if ( xhr.lengthComputable ) {
+    var percentComplete = xhr.loaded / xhr.total * 100;
+    console.log( Math.round(percentComplete, 2) + '% downloaded' );
+  }
+};
+
+function onError (err) {
+  console.log(err);
+};
 
 function init () {
-  //INIT SCENE
   scene = new THREE.Scene();
-  //INIT CAMERA
+  
+  // Init camera
   camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000000 );
   controls = new THREE.OrbitControls(camera);
-
   camera.position.set(0, -211.46220431794083, 321.89248277879454);
   controls.target.set(0, -211, 0);
   controls.update()
-  //INIT RENDERER
+  
+  // Init render
   renderer = new THREE.WebGLRenderer();
   renderer.setSize( window.innerWidth, window.innerHeight );
   document.body.appendChild( renderer.domElement );
@@ -80,11 +44,12 @@ function init () {
     emissive: {type: 'c', value: new THREE.Color(0x00000)},
     specular: {type: 'c', value: new THREE.Color(0xFFFFFF)},
     shininess: {value: 10},
-    //these are for the vertex shader
+    // Houdini simulation bounding box for the vertex shader
     bbox_max: {value: 200.236846924},
     bbox_min: {value: -619.393371582}
   }
-  //use the built in phong fragment shader to handle lighting
+
+  // Use the built in phong fragment shader to handle lighting
   var phongShader = THREE.ShaderLib.phong;
   var phongUniform = THREE.UniformsUtils.clone(phongShader.uniforms); //copy over the remaining values
 
@@ -117,26 +82,36 @@ function init () {
   Promise.all([fetch("assets/squid_pos.exr"), fetch("assets/squid_norm.exr")]).then(res => { 
     return Promise.all([res[0].arrayBuffer(), res[1].arrayBuffer()]);
   }).then(buffers => {
-    exrPos = parseExr(buffers[0]);
-    exrNorm = parseExr(buffers[1]);
+
+    // Parse exr images from loaded buffers
+    exrPos = new Module.EXRLoader(buffers[0]);
+    exrNorm = new Module.EXRLoader(buffers[1]);
+
+    // Cache image data to this variables to avoid call 
+    // to this member functions in the render for loop
+    exrPosBytes = exrPos.getBytes();
+    exrNormBytes = exrNorm.getBytes();
+    texWidth = exrPos.width();
+    texHeight = exrPos.height();
     
-    // Populate the first set of position and normal displacements
+    // Populate the first set of position and normal
     count = squidMesh.geometry.attributes.position.count;
     var texPos = new Float32Array ( count * 3 )
     var texNorm = new Float32Array ( count * 3 )
-    //iterate through the uv's to find the corresponding value in the exr
-    for (var i=0; i<count; i++){
-      var u = Math.floor(squidMesh.geometry.attributes.uv2.array[2*i] * exrPos.width);
-      var v = Math.floor(squidMesh.geometry.attributes.uv2.array[2*i+1] * exrPos.height);
-      var t = 4*(v*exrPos.width + u);
-      texPos[3*i] = exrPos.data[t];
-      texPos[3*i+1] = exrPos.data[t+1];
-      texPos[3*i+2] = exrPos.data[t+2];
-      texNorm[3*i] = exrNorm.data[t];
-      texNorm[3*i+1] = exrNorm.data[t+1];
-      texNorm[3*i+2] = exrNorm.data[t+2];
+
+    // Iterate through the uv's to find the corresponding value in the exr
+    for (var i = 0; i < count; i++) {
+      var u = Math.floor(squidMesh.geometry.attributes.uv2.array[2*i] * texWidth);
+      var v = Math.floor(squidMesh.geometry.attributes.uv2.array[2*i+1] * texHeight);
+      var t = 4 * (v * texWidth + u);
+      texPos[3*i] = exrPosBytes[t];
+      texPos[3*i+1] = exrPosBytes[t+1];
+      texPos[3*i+2] = exrPosBytes[t+2];
+      texNorm[3*i] = exrNormBytes[t];
+      texNorm[3*i+1] = exrNormBytes[t+1];
+      texNorm[3*i+2] = exrNormBytes[t+2];
     }
-    // Add the position and normal displacements as a shader attribute
+    // Add the position and normal as a shader attribute
     squidMesh.geometry.addAttribute( 'texPos', new THREE.BufferAttribute( texPos, 3 ) );
     squidMesh.geometry.addAttribute( 'texNorm', new THREE.BufferAttribute( texNorm, 3 ) );
     
@@ -146,17 +121,6 @@ function init () {
   });
 
   /*************** SET UP THE LIGHTS FOR THE SCENE ***************/
-  // var light1 = new THREE.PointLight( 0x7bf9f5, 0.3 );
-  // light1.position.set(500,100,0);
-  // scene.add( light1 );
-  //
-  // var light2 = new THREE.PointLight( 0xe006fb, 0.4 );
-  // light2.position.set(500,-100,0);
-  // scene.add( light2 );
-  //
-  // var light3 = new THREE.PointLight( 0x608bff, 0.9 );
-  // light3.position.set(-100,100,-100);
-  // scene.add( light3 );
   var sphere = new THREE.SphereGeometry( 10, 16, 8 );
   light1 = new THREE.PointLight( 0xff0040, 0.3 );
   light1.add( new THREE.Mesh( sphere, new THREE.MeshBasicMaterial( { color: 0xff0040 } ) ) );
@@ -175,7 +139,7 @@ function init () {
   document.body.appendChild( stats.dom );
 }
 
-function animate() {
+function animate() {  
   requestAnimationFrame( animate );
   controls.update();
   render();
@@ -183,7 +147,7 @@ function animate() {
 }
 
 function render() {
-  //change direction of animation when ready
+  // Change direction of animation when ready
   if (timeInFrames === 0.99) {
     startTime = Date.now() + 0.01;
     forward = false;
@@ -192,26 +156,27 @@ function render() {
     startTime = Date.now() + 0.01;
     forward = true;
   }
-  //update the timeInFrames
+  // Update the timeInFrames
   timeDelta = Date.now() - startTime;
   if (forward) {
     timeInFrames = Math.min(timeDelta / totalDuration, 0.99);
   } else {
     timeInFrames = 0.99 - Math.min(timeDelta / totalDuration, 0.99);
   }
-  //update the position and normal displacement attributes for the current timeInFrames (or row of EXR)
+  // Update the position and normal displacement attributes for the current timeInFrames (or row of EXR)
   var posValues = squidMesh.geometry.attributes.texPos.array;
   var normValues = squidMesh.geometry.attributes.texNorm.array;
-  for (i = 0; i < count; i++) {
-    var u = Math.floor(squidMesh.geometry.attributes.uv2.array[2*i] * exrPos.width);
-    var v = Math.floor((squidMesh.geometry.attributes.uv2.array[2*i+1]-timeInFrames) * exrPos.height);
-    var t = 4*(v*exrPos.width + u);
-    posValues[3*i] = exrPos.data[t];
-    posValues[3*i+1] = exrPos.data[t+1];
-    posValues[3*i+2] = exrPos.data[t+2];
-    normValues[3*i] = exrNorm.data[t];
-    normValues[3*i+1] = exrNorm.data[t+1];
-    normValues[3*i+2] = exrNorm.data[t+2];
+  
+  for (i = 0; i < count; i++) {    
+    var u = Math.floor(squidMesh.geometry.attributes.uv2.array[2*i] * texWidth);
+    var v = Math.floor((squidMesh.geometry.attributes.uv2.array[2*i+1] - timeInFrames) * texHeight);
+    var t = 4 * (v * texWidth + u);
+    posValues[3*i] = exrPosBytes[t];
+    posValues[3*i+1] = exrPosBytes[t+1];
+    posValues[3*i+2] = exrPosBytes[t+2];
+    normValues[3*i] = exrNormBytes[t];
+    normValues[3*i+1] = exrNormBytes[t+1];
+    normValues[3*i+2] = exrNormBytes[t+2];
   }
   //NEEDS UPDATE!!
   squidMesh.geometry.attributes.texPos.needsUpdate = true;
@@ -220,4 +185,4 @@ function render() {
   renderer.render( scene, camera );
 }
 
-init ();
+init();
