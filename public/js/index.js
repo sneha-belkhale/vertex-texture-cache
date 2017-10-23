@@ -26,14 +26,14 @@ function onError (err) {
 
 function init () {
   scene = new THREE.Scene();
-  
+
   // Init camera
   camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000000 );
   controls = new THREE.OrbitControls(camera);
   camera.position.set(0, -211.46220431794083, 321.89248277879454);
   controls.target.set(0, -211, 0);
   controls.update()
-  
+
   // Init render
   renderer = new THREE.WebGLRenderer();
   renderer.setSize( window.innerWidth, window.innerHeight );
@@ -68,7 +68,7 @@ function init () {
   /*************** FBX GEOMETRY AND EXR TEXTURE LOADING ***************/
   let manager = new THREE.LoadingManager();
   let FBXLoader = new THREE.FBXLoader( manager );
-  
+
   FBXLoader.load( 'assets/squid_mesh.fbx', function ( object ) {
     object.traverse((child) => {
       if ( child instanceof THREE.Mesh ) {
@@ -79,7 +79,7 @@ function init () {
   }, onProgress, onError );
 
   // Fetch our position and normal map exr's simultaneously
-  Promise.all([fetch("assets/squid_pos.exr"), fetch("assets/squid_norm.exr")]).then(res => { 
+  Promise.all([fetch("assets/squid_pos.exr"), fetch("assets/squid_norm.exr")]).then(res => {
     return Promise.all([res[0].arrayBuffer(), res[1].arrayBuffer()]);
   }).then(buffers => {
 
@@ -87,34 +87,22 @@ function init () {
     exrPos = new Module.EXRLoader(buffers[0]);
     exrNorm = new Module.EXRLoader(buffers[1]);
 
-    // Cache image data to this variables to avoid call 
+    // Cache image data to this variables to avoid call
     // to this member functions in the render for loop
     exrPosBytes = exrPos.getBytes();
     exrNormBytes = exrNorm.getBytes();
     texWidth = exrPos.width();
     texHeight = exrPos.height();
-    
+
     // Populate the first set of position and normal
     count = squidMesh.geometry.attributes.position.count;
     var texPos = new Float32Array ( count * 3 )
     var texNorm = new Float32Array ( count * 3 )
 
-    // Iterate through the uv's to find the corresponding value in the exr
-    for (var i = 0; i < count; i++) {
-      var u = Math.floor(squidMesh.geometry.attributes.uv2.array[2*i] * texWidth);
-      var v = Math.floor(squidMesh.geometry.attributes.uv2.array[2*i+1] * texHeight);
-      var t = 4 * (v * texWidth + u);
-      texPos[3*i] = exrPosBytes[t];
-      texPos[3*i+1] = exrPosBytes[t+1];
-      texPos[3*i+2] = exrPosBytes[t+2];
-      texNorm[3*i] = exrNormBytes[t];
-      texNorm[3*i+1] = exrNormBytes[t+1];
-      texNorm[3*i+2] = exrNormBytes[t+2];
-    }
     // Add the position and normal as a shader attribute
     squidMesh.geometry.addAttribute( 'texPos', new THREE.BufferAttribute( texPos, 3 ) );
     squidMesh.geometry.addAttribute( 'texNorm', new THREE.BufferAttribute( texNorm, 3 ) );
-    
+
     // Start the animation now
     startTime = Date.now();
     animate();  // Lets gooooo!
@@ -139,7 +127,7 @@ function init () {
   document.body.appendChild( stats.dom );
 }
 
-function animate() {  
+function animate() {
   requestAnimationFrame( animate );
   controls.update();
   render();
@@ -156,7 +144,7 @@ function render() {
     startTime = Date.now() + 0.01;
     forward = true;
   }
-  // Update the timeInFrames
+  // Update the timeInFrames2
   timeDelta = Date.now() - startTime;
   if (forward) {
     timeInFrames = Math.min(timeDelta / totalDuration, 0.99);
@@ -166,8 +154,8 @@ function render() {
   // Update the position and normal displacement attributes for the current timeInFrames (or row of EXR)
   var posValues = squidMesh.geometry.attributes.texPos.array;
   var normValues = squidMesh.geometry.attributes.texNorm.array;
-  
-  for (i = 0; i < count; i++) {    
+
+  for (i = 0; i < count; i++) {
     var u = Math.floor(squidMesh.geometry.attributes.uv2.array[2*i] * texWidth);
     var v = Math.floor((squidMesh.geometry.attributes.uv2.array[2*i+1] - timeInFrames) * texHeight);
     var t = 4 * (v * texWidth + u);
