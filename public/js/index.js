@@ -75,6 +75,15 @@ function init () {
         squidMesh = new THREE.Mesh(child.geometry, material);
       }
     });
+    // Create position and normal arrays corresponding to number of vertices 
+    count = squidMesh.geometry.attributes.position.count;
+    var texPos = new Float32Array ( count * 3 )
+    var texNorm = new Float32Array ( count * 3 )
+
+    // Add the position and normal as a shader attribute
+    squidMesh.geometry.addAttribute( 'texPos', new THREE.BufferAttribute( texPos, 3 ) );
+    squidMesh.geometry.addAttribute( 'texNorm', new THREE.BufferAttribute( texNorm, 3 ) );
+
     scene.add(squidMesh);
   }, onProgress, onError );
 
@@ -93,15 +102,6 @@ function init () {
     exrNormBytes = exrNorm.getBytes();
     texWidth = exrPos.width();
     texHeight = exrPos.height();
-
-    // Populate the first set of position and normal
-    count = squidMesh.geometry.attributes.position.count;
-    var texPos = new Float32Array ( count * 3 )
-    var texNorm = new Float32Array ( count * 3 )
-
-    // Add the position and normal as a shader attribute
-    squidMesh.geometry.addAttribute( 'texPos', new THREE.BufferAttribute( texPos, 3 ) );
-    squidMesh.geometry.addAttribute( 'texNorm', new THREE.BufferAttribute( texNorm, 3 ) );
 
     // Start the animation now
     startTime = Date.now();
