@@ -6,13 +6,13 @@ var texWidth, texHeight;
 var count;
 var startTime;
 var timeDelta = 0;
-var fps = 20.0 //fps
-var numOfFrames = 128
-var totalDuration = numOfFrames * (1 / fps) * 1000 ;
+var fps = 20.0;
+var numOfFrames = 128;
+var totalDuration = numOfFrames * (1 / fps) * 1000;
 var timeInFrames = 0.001;
 var forward = false;
 
-// Squid model progress
+// FBX model progress
 function onProgress (xhr) {
   if ( xhr.lengthComputable ) {
     var percentComplete = xhr.loaded / xhr.total * 100;
@@ -39,7 +39,7 @@ function init () {
   renderer.setSize( window.innerWidth, window.innerHeight );
   document.body.appendChild( renderer.domElement );
 
-  /*************** SET UP THE MATERIAL FOR FBX GEOMETRY ***************/
+  // Set up the material for FBX geometry
   var uniform = {
     emissive: {type: 'c', value: new THREE.Color(0x00000)},
     specular: {type: 'c', value: new THREE.Color(0xFFFFFF)},
@@ -49,9 +49,10 @@ function init () {
     bbox_min: {value: -619.393371582}
   }
 
-  // Use the built in phong fragment shader to handle lighting
+  // Use the built in Phong fragment shader to handle lighting
   var phongShader = THREE.ShaderLib.phong;
-  var phongUniform = THREE.UniformsUtils.clone(phongShader.uniforms); //copy over the remaining values
+  // Copy over the remaining values
+  var phongUniform = THREE.UniformsUtils.clone(phongShader.uniforms);
 
   this.uniforms = THREE.UniformsUtils.merge([phongUniform, uniform])
 
@@ -65,9 +66,9 @@ function init () {
     //derivatives: true //so that we can calculate the actual normal at each vertex in the fragment shader
   });
 
-  /*************** FBX GEOMETRY AND EXR TEXTURE LOADING ***************/
-  let manager = new THREE.LoadingManager();
-  let FBXLoader = new THREE.FBXLoader( manager );
+  // FBX geometry and EXR texture loading
+  var manager = new THREE.LoadingManager();
+  var FBXLoader = new THREE.FBXLoader( manager );
 
   FBXLoader.load( 'assets/squid_mesh.fbx', function ( object ) {
     object.traverse((child) => {
@@ -108,7 +109,7 @@ function init () {
     animate();  // Lets gooooo!
   });
 
-  /*************** SET UP THE LIGHTS FOR THE SCENE ***************/
+  // Set up the lights for the scene
   var sphere = new THREE.SphereGeometry( 10, 16, 8 );
   light1 = new THREE.PointLight( 0xff0040, 0.3 );
   light1.add( new THREE.Mesh( sphere, new THREE.MeshBasicMaterial( { color: 0xff0040 } ) ) );
@@ -151,7 +152,8 @@ function render() {
   } else {
     timeInFrames = 0.99 - Math.min(timeDelta / totalDuration, 0.99);
   }
-  // Update the position and normal displacement attributes for the current timeInFrames (or row of EXR)
+  // Update the position and normal displacement attributes 
+  // for the current timeInFrames (or row of EXR)
   var posValues = squidMesh.geometry.attributes.texPos.array;
   var normValues = squidMesh.geometry.attributes.texNorm.array;
 
@@ -166,7 +168,7 @@ function render() {
     normValues[3*i+1] = exrNormBytes[t+1];
     normValues[3*i+2] = exrNormBytes[t+2];
   }
-  //NEEDS UPDATE!!
+  // NEEDS UPDATE!!
   squidMesh.geometry.attributes.texPos.needsUpdate = true;
   squidMesh.geometry.attributes.texNorm.needsUpdate = true;
 
