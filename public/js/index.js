@@ -30,7 +30,7 @@ function init () {
   // Init camera
   camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000000 );
   controls = new THREE.OrbitControls(camera);
-  camera.position.set(0, -211.46220431794083, 321.89248277879454);
+  camera.position.set(0, -225.26275687584004, 485.2013408048641);
   controls.target.set(0, -211, 0);
   controls.update()
 
@@ -42,6 +42,7 @@ function init () {
   // Set up the material for FBX geometry
   var uniform = {
     emissive: {type: 'c', value: new THREE.Color(0x00000)},
+    diffuse: {type: 'c', value: new THREE.Color(0xFFFFFF)},
     specular: {type: 'c', value: new THREE.Color(0xFFFFFF)},
     shininess: {value: 10},
     // Houdini simulation bounding box for the vertex shader
@@ -53,6 +54,9 @@ function init () {
   var phongShader = THREE.ShaderLib.phong;
   // Copy over the remaining values
   var phongUniform = THREE.UniformsUtils.clone(phongShader.uniforms);
+
+  console.log(phongUniform);
+  
 
   this.uniforms = THREE.UniformsUtils.merge([phongUniform, uniform])
 
@@ -111,18 +115,23 @@ function init () {
 
   // Set up the lights for the scene
   var sphere = new THREE.SphereGeometry( 10, 16, 8 );
-  light1 = new THREE.PointLight( 0xff0040, 0.3 );
-  light1.add( new THREE.Mesh( sphere, new THREE.MeshBasicMaterial( { color: 0xff0040 } ) ) );
+  light1 = new THREE.PointLight( 0xff0040, 0.5 );
+  
   light1.position.set(500,100,-300);
   scene.add( light1 );
-  light2 = new THREE.PointLight( 0x0040ff, 0.4 );
-  light2.add( new THREE.Mesh( sphere, new THREE.MeshBasicMaterial( { color: 0x0040ff } ) ) );
+  light2 = new THREE.PointLight( 0x0040ff, 0.7 );
   light2.position.set(500,-100,300);
   scene.add( light2 );
-  light3 = new THREE.PointLight( 0x80ff80, 0.4 );
-  light3.add( new THREE.Mesh( sphere, new THREE.MeshBasicMaterial( { color: 0x80ff80 } ) ) );
+  light3 = new THREE.PointLight( 0x80ff80, 0.7 );
   light3.position.set(-500,100,-500);
   scene.add( light3 );
+  var light = new THREE.HemisphereLight( 0x69A0CA, 0x6F3D08, 0.3 );
+  scene.add( light );
+
+  // Add light placeholders for debugging
+  // light1.add( new THREE.Mesh( sphere, new THREE.MeshBasicMaterial( { color: 0xff0040 } ) ) );
+  // light2.add( new THREE.Mesh( sphere, new THREE.MeshBasicMaterial( { color: 0x0040ff } ) ) );
+  // light3.add( new THREE.Mesh( sphere, new THREE.MeshBasicMaterial( { color: 0x80ff80 } ) ) );
 
   stats = new Stats();
   document.body.appendChild( stats.dom );
