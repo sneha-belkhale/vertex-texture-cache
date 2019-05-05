@@ -1,7 +1,7 @@
 # vertex-texture-cache
 three.js module for loading Houdini vertex animation (texture cache), and rendering real-time in the browser.
 
-Check out a demo @ http://codercat.club/vertex-cache
+Check out a demo @ http://codercat.tk/vertex-cache
 
 Made possible with the Houdini Vertex Animation GDC Project, three.js, and tinyEXR.
 
